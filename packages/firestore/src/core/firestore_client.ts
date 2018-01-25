@@ -51,6 +51,7 @@ import {
 } from '../local/tab_notification_channel';
 import { AutoId } from '../util/misc';
 import { WindowEventListener } from '../platform_browser/window_event_listener';
+import {MasterElector} from '../local/master_elect';
 
 const LOG_TAG = 'FirestoreClient';
 
@@ -74,6 +75,7 @@ export class FirestoreClient {
   private notificationChannel?: TabNotificationChannel;
   private windowEventListener?: WindowEventListener;
   private syncEngine: SyncEngine;
+  private masterElector: MasterElector;
   constructor(
     private platform: Platform,
     private databaseInfo: DatabaseInfo,
@@ -147,7 +149,7 @@ export class FirestoreClient {
         initialized = true;
 
         this.initializePersistence(usePersistence, persistenceResult)
-          .then(() => this.initializeRest(user))
+          .then(() => {this.initializeRest(user))
           .then(initializationDone.resolve, initializationDone.reject);
       } else {
         this.asyncQueue.schedule(() => {
@@ -257,16 +259,19 @@ export class FirestoreClient {
       serializer
     );
 
+
     return this.persistence.start().then(() => {
+      this.masterElector = new MasterElector(this.asyncQueue, this.persistence, ownerId);
       this.notificationChannel = new LocalStorageNotificationChannel(
         storagePrefix,
         ownerId,
-        this.asyncQueue
+        this.asyncQueue,
+          this.syncEngine
       );
       this.notificationChannel.start();
       this.windowEventListener = new WindowEventListener(
         this.asyncQueue,
-        this.notificationChannel
+        this.masterElector
       );
       this.windowEventListener.start();
     });
@@ -322,6 +327,7 @@ export class FirestoreClient {
         this.syncEngine = new SyncEngine(
           this.localStore,
           this.remoteStore,
+          this.notificationChannel,
           user
         );
 
@@ -329,6 +335,10 @@ export class FirestoreClient {
         this.remoteStore.syncEngine = this.syncEngine;
 
         this.eventMgr = new EventManager(this.syncEngine);
+
+        if (this.masterElector) {
+          this.masterElector.start(user);
+        }
 
         // NOTE: RemoteStore depends on LocalStore (for persisting stream
         // tokens, refilling mutation queue, etc.) so must be started after
@@ -344,7 +354,7 @@ export class FirestoreClient {
     this.asyncQueue.verifyOperationInProgress();
 
     debug(LOG_TAG, 'User Changed: ' + user.uid);
-    return this.syncEngine.handleUserChange(user);
+    return this.syncEngine.handleUserChange(user).then(() => this.masterElector.handleUserChange(user));
   }
 
   /** Disables the network connection. Pending operations will not complete. */

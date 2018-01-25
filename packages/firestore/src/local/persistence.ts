@@ -21,6 +21,7 @@ import { PersistenceTransaction } from './persistence';
 import { PersistencePromise } from './persistence_promise';
 import { QueryCache } from './query_cache';
 import { RemoteDocumentCache } from './remote_document_cache';
+import {InstanceStore} from './instance_store';
 
 /**
  * Opaque interface representing a persistence transaction.
@@ -108,6 +109,10 @@ export interface Persistence {
    * to emulate the persisted implementation to the extent possible.
    */
   getRemoteDocumentCache(): RemoteDocumentCache;
+
+
+
+  getInstanceStore(user: User) : InstanceStore;
 
   /**
    * Performs an operation inside a persistence transaction. Any reads or writes

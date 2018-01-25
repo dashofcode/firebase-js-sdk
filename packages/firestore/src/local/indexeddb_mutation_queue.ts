@@ -45,15 +45,6 @@ import { SimpleDbStore, SimpleDbTransaction } from './simple_db';
 /** A mutation queue for a specific user, backed by IndexedDB. */
 export class IndexedDbMutationQueue implements MutationQueue {
   /**
-   * Next value to use when assigning sequential IDs to each mutation batch.
-   *
-   * NOTE: There can only be one IndexedDbMutationQueue for a given db at a
-   * time, hence it is safe to track nextBatchID as an instance-level property.
-   * Should we ever relax this constraint we'll need to revisit this.
-   */
-  private nextBatchId: BatchId;
-
-  /**
    * A write-through cache copy of the metadata describing the current queue.
    */
   private metadata: DbMutationQueue;
@@ -85,9 +76,10 @@ export class IndexedDbMutationQueue implements MutationQueue {
   }
 
   start(transaction: PersistenceTransaction): PersistencePromise<void> {
+    let batchId;
     return IndexedDbMutationQueue.loadNextBatchIdFromDb(transaction)
       .next(nextBatchId => {
-        this.nextBatchId = nextBatchId;
+        batchId = nextBatchId;
         return mutationQueuesStore(transaction).get(this.userId);
       })
       .next((metadata: DbMutationQueue | null) => {
@@ -105,7 +97,7 @@ export class IndexedDbMutationQueue implements MutationQueue {
         // contents, and there may be no mutations in the queue. In this
         // case, we need to reset lastAcknowledgedBatchId (which is safe
         // since the queue must be empty).
-        if (this.metadata.lastAcknowledgedBatchId >= this.nextBatchId) {
+        if (this.metadata.lastAcknowledgedBatchId >=batchId) {
           return this.checkEmpty(transaction).next(empty => {
             assert(
               empty,
@@ -166,7 +158,7 @@ export class IndexedDbMutationQueue implements MutationQueue {
   getNextBatchId(
     transaction: PersistenceTransaction
   ): PersistencePromise<BatchId> {
-    return PersistencePromise.resolve(this.nextBatchId);
+    return IndexedDbMutationQueue.loadNextBatchIdFromDb(transaction);
   }
 
   getHighestAcknowledgedBatchId(
@@ -211,33 +203,34 @@ export class IndexedDbMutationQueue implements MutationQueue {
     localWriteTime: Timestamp,
     mutations: Mutation[]
   ): PersistencePromise<MutationBatch> {
-    const batchId = this.nextBatchId;
-    this.nextBatchId++;
-    const batch = new MutationBatch(batchId, localWriteTime, mutations);
+    let batch;
+    let batchId;
 
-    const dbBatch = this.serializer.toDbMutationBatch(this.userId, batch);
-
-    return mutationsStore(transaction)
-      .put(dbBatch)
-      .next(() => {
-        const promises: Array<PersistencePromise<void>> = [];
-        for (const mutation of mutations) {
-          const encodedPath = EncodedResourcePath.encode(mutation.key.path);
-          const indexKey = DbDocumentMutation.key(
-            this.userId,
-            mutation.key.path,
-            batchId
-          );
-          documentMutationsStore(transaction).put(
-            indexKey,
-            DbDocumentMutation.PLACEHOLDER
-          );
-        }
-        return PersistencePromise.waitFor(promises);
-      })
-      .next(() => {
-        return batch;
-      });
+    return this.getNextBatchId(transaction).next(nextBatchId => {
+          batchId = nextBatchId;
+          batch = new MutationBatch(batchId, localWriteTime, mutations);
+          const dbBatch = this.serializer.toDbMutationBatch(this.userId, batch);
+          return mutationsStore(transaction).put(dbBatch)
+        })
+        .next(() => {
+          const promises: Array<PersistencePromise<void>> = [];
+          for (const mutation of mutations) {
+            const encodedPath = EncodedResourcePath.encode(mutation.key.path);
+            const indexKey = DbDocumentMutation.key(
+              this.userId,
+              mutation.key.path,
+              batchId
+            );
+            documentMutationsStore(transaction).put(
+              indexKey,
+              DbDocumentMutation.PLACEHOLDER
+            );
+          }
+          return PersistencePromise.waitFor(promises);
+        })
+          .next(() => {
+          return batch;
+        });
   }
 
   lookupMutationBatch(

@@ -28,6 +28,7 @@ import { PersistencePromise } from './persistence_promise';
 import { QueryCache } from './query_cache';
 import { QueryData } from './query_data';
 import { ReferenceSet } from './reference_set';
+import {Code, FirestoreError} from '../util/error';
 
 export class MemoryQueryCache implements QueryCache {
   /**
@@ -138,5 +139,16 @@ export class MemoryQueryCache implements QueryCache {
     key: DocumentKey
   ): PersistencePromise<boolean> {
     return this.references.containsKey(txn, key);
+  }
+
+
+  getQuery(transaction: PersistenceTransaction, targetId: number): PersistencePromise<QueryData> {
+    this.queries.forEach((key, val) => {
+      if (val.targetId === targetId) {
+        return PersistencePromise.resolve(val);
+      }
+    });
+
+    return PersistencePromise.reject(new FirestoreError(Code.INTERNAL, "Query not found"));
   }
 }

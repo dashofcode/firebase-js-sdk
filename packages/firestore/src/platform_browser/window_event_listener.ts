@@ -18,12 +18,15 @@ import { VisibilityState } from '../core/types';
 import { AsyncQueue } from '../util/async_queue';
 import { TabNotificationChannel } from '../local/tab_notification_channel';
 import { Code, FirestoreError } from '../util/error';
+import {InstanceStore} from '../local/instance_store';
+import {SyncEngine} from '../core/sync_engine';
+import {MasterElector} from '../local/master_elect';
 
 /** Listener for window events raised by the browser. */
 export class WindowEventListener {
   constructor(
     private asyncQueue: AsyncQueue,
-    private notificationChannel: TabNotificationChannel
+    private masterElector: MasterElector
   ) {}
 
   /** Returns true if 'window' is available in the current environment. */
@@ -49,7 +52,7 @@ export class WindowEventListener {
       }
 
       this.asyncQueue.schedule(() => {
-        this.notificationChannel.setVisibility(visibility);
+        this.masterElector.setVisibility(visibility);
         return Promise.resolve();
       });
     });

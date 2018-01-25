@@ -34,6 +34,8 @@ import { PersistencePromise } from './persistence_promise';
 import { QueryCache } from './query_cache';
 import { RemoteDocumentCache } from './remote_document_cache';
 import { SimpleDb, SimpleDbTransaction } from './simple_db';
+import {InstanceStore} from './instance_store';
+import {IndexedDbInstanceStore} from './indexeddb_instance_store';
 
 const LOG_TAG = 'IndexedDbPersistence';
 
@@ -134,7 +136,7 @@ export class IndexedDbPersistence implements Persistence {
       .then(db => {
         this.simpleDb = db;
       })
-      .then(() => this.tryAcquireOwnerLease())
+      .then(() => this.tryBecomeMaster())
       .then(() => {
         this.scheduleOwnerLeaseRefreshes();
         this.attachWindowUnloadHook();
@@ -153,6 +155,10 @@ export class IndexedDbPersistence implements Persistence {
 
   getMutationQueue(user: User): MutationQueue {
     return IndexedDbMutationQueue.forUser(user, this.serializer);
+  }
+
+  getInstanceStore(user: User): InstanceStore {
+    return new IndexedDbInstanceStore(user.uid, this.ownerId);
   }
 
   getQueryCache(): QueryCache {

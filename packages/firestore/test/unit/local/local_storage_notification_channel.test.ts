@@ -46,7 +46,7 @@ describe('LocalStorageNotificationChannelTests', () => {
     queue = new AsyncQueue();
     expect(queue.periodicOperationsCount).to.be.equal(0);
     return persistenceHelpers
-      .testLocalStorageNotificationChannel(ownerId, queue)
+      .testLocalStorageNotificationChannel(ownerId, queue, null)
       .then(ws => {
         webStorage = ws;
         expect(queue.periodicOperationsCount).to.be.equal(1);
@@ -74,33 +74,33 @@ describe('LocalStorageNotificationChannelTests', () => {
     });
   }
 
-  describe('persists visibility state', () => {
-    it('unknown', () => {
-      webStorage.setVisibility(VisibilityState.Unknown);
-      assertInstanceState('visibility', { visibilityState: 'Unknown' });
-    });
-
-    it('foreground', () => {
-      webStorage.setVisibility(VisibilityState.Foreground);
-      assertInstanceState('visibility', { visibilityState: 'Foreground' });
-    });
-
-    it('background', () => {
-      webStorage.setVisibility(VisibilityState.Background);
-      assertInstanceState('visibility', { visibilityState: 'Background' });
-    });
-  });
-
-  it('refreshes state periodically', () => {
-    webStorage.setVisibility(VisibilityState.Foreground);
-    assertInstanceState('visibility', { visibilityState: 'Foreground' });
-    localStorage.clear();
-
-    // Verify that the state is written again.
-    // Note that LocalStorage observers can't be used here since they don't fire
-    // for changes in the originating tab. Instead, we drain the AsyncQueue.
-    return queue.drain(/* executeDelayedTasks= */ true).then(() => {
-      assertInstanceState('visibility', { visibilityState: 'Foreground' });
-    });
-  });
+  // describe('persists visibility state', () => {
+  //   it('unknown', () => {
+  //     webStorage.setVisibility(VisibilityState.Unknown);
+  //     assertInstanceState('visibility', { visibilityState: 'Unknown' });
+  //   });
+  //
+  //   it('foreground', () => {
+  //     webStorage.setVisibility(VisibilityState.Foreground);
+  //     assertInstanceState('visibility', { visibilityState: 'Foreground' });
+  //   });
+  //
+  //   it('background', () => {
+  //     webStorage.setVisibility(VisibilityState.Background);
+  //     assertInstanceState('visibility', { visibilityState: 'Background' });
+  //   });
+  // });
+  //
+  // it('refreshes state periodically', () => {
+  //   webStorage.setVisibility(VisibilityState.Foreground);
+  //   assertInstanceState('visibility', { visibilityState: 'Foreground' });
+  //   localStorage.clear();
+  //
+  //   // Verify that the state is written again.
+  //   // Note that LocalStorage observers can't be used here since they don't fire
+  //   // for changes in the originating tab. Instead, we drain the AsyncQueue.
+  //   return queue.drain(/* executeDelayedTasks= */ true).then(() => {
+  //     assertInstanceState('visibility', { visibilityState: 'Foreground' });
+  //   });
+  // });
 });

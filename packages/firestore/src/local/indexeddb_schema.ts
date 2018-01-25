@@ -15,7 +15,7 @@
  */
 
 import * as api from '../protos/firestore_proto_api';
-import { BatchId } from '../core/types';
+import { BatchId, VisibilityState } from '../core/types';
 import { TargetId } from '../core/types';
 import { ResourcePath } from '../model/path';
 import { assert } from '../util/assert';
@@ -455,6 +455,21 @@ export class DbTargetGlobal {
   ) {}
 }
 
+export type DbInstanceKey = [string, string];
+
+export class DbInstance {
+  static store = 'instances';
+
+  static keyPath = ['userId', 'instanceId'];
+
+  constructor(
+      public userId: string,
+      public instanceId: string,
+      public updateTimeMs: number,
+      public visibilityState: VisibilityState
+  ) {}
+}
+
 /**
  * The list of all IndexedDB stored used by the SDK. This is used when creating
  * transactions so that access across all stores is done atomically.
@@ -467,5 +482,6 @@ export const ALL_STORES = [
   DbTarget.store,
   DbOwner.store,
   DbTargetGlobal.store,
-  DbTargetDocument.store
+  DbTargetDocument.store,
+  DbInstance.store
 ];

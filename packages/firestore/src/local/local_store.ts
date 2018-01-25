@@ -841,6 +841,14 @@ export class LocalStore {
   }
 
   getMutationBatch(batchId: BatchId): Promise<MutationBatch> {
-    return this.mutationQueue.lookupMutationBatch(batchId);
+    return this.persistence.runTransaction('Retrieve query', txn => {
+      return this.mutationQueue.lookupMutationBatch(txn, batchId);
+    });
+  }
+
+  getQuery(targetId: number) : Promise<QueryData> {
+    return this.persistence.runTransaction('Retrieve query', txn => {
+      return this.queryCache.getQuery(txn, targetId);
+    });
   }
 }

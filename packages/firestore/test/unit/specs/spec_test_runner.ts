@@ -28,6 +28,7 @@ import { Query } from '../../../src/core/query';
 import { SnapshotVersion } from '../../../src/core/snapshot_version';
 import { SyncEngine } from '../../../src/core/sync_engine';
 import {
+  BatchId,
   OnlineState,
   ProtoByteString,
   TargetId,
@@ -281,6 +282,26 @@ class MockConnection implements Connection {
 }
 
 export class MockNotificationChannel implements TabNotificationChannel {
+  addMutation(batchId: BatchId): void {
+  }
+
+  rejectMutation(batchId: BatchId, error: FirestoreError): void {
+  }
+
+  acknowledgeMutation(batchId: BatchId): void {
+  }
+
+  addQuery(targetId: TargetId): void {
+  }
+
+  removeQuery(targetId: TargetId): void {
+  }
+
+  rejectQuery(targetId: TargetId, err: FirestoreError): void {
+  }
+
+  updateQuery(updatedTargetIds: TargetId[]): void {
+  }
   private startCalled = false;
   private shutdownCalled = false;
 
@@ -427,6 +448,7 @@ abstract class TestRunner {
     this.syncEngine = new SyncEngine(
       this.localStore,
       this.remoteStore,
+      this.notificationChannel,
       this.user
     );
 
