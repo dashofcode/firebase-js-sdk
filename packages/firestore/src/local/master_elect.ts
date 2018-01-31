@@ -11,6 +11,7 @@ import {Code, FirestoreError} from '../util/error';
 import {SimpleDbStore, SimpleDbTransaction} from './simple_db';
 import {PersistencePromise} from './persistence_promise';
 import {fail} from '../util/assert';
+import {SyncEngine} from '../core/sync_engine';
 
 export class MasterElector {
 
@@ -19,7 +20,7 @@ export class MasterElector {
   private userId: User;
   private callbackRunning = false;
 
-  constructor(private asyncQueue: AsyncQueue, private persistence: Persistence, private instanceId : string){}
+  constructor(private asyncQueue: AsyncQueue, private persistence: Persistence, private instanceId : string, public syncEngine: SyncEngine){}
 
   start(userId : User) : void {
     this.handleUserChange(userId).then(() => this.tryBecomeMaster()).then(() => {
@@ -31,7 +32,7 @@ export class MasterElector {
     this.tryBecomeMaster();
   }
 
-  tryBecomeMaster() :  Promise<boolean> {
+  tryBecomeMaster() :  Promise<void> {
     return this.persistence.runTransaction("become master", txn => {
       return this.getCurrentMaster(txn).next((owner) => {
         if (owner && owner.ownerId == this.instanceId) {
@@ -50,17 +51,20 @@ export class MasterElector {
           }
         }
       })
+    }).then(master => {
+      this.syncEngine.setMasterState(master);
     });
 
   }
 
   private becomeMaster(txn: PersistenceTransaction): PersistencePromise<void> {
-    return ownersStore(txn).put('owner', new DbOwner(this.userId.uid, Date.now() + 5000));
+    console.log('instance id ' + this.instanceId);
+    return ownersStore(txn).put('owner', new DbOwner(this.instanceId, Date.now() + 5000));
   }
 
   private getCurrentMaster(txn: PersistenceTransaction): PersistencePromise<DbOwner|null> {
     return ownersStore(txn).get('owner').next(dbOwner => {
-      if (dbOwner !== null || dbOwner.leaseTimestampMs <= Date.now()) {
+      if (dbOwner !== null && dbOwner.leaseTimestampMs <= Date.now()) {
         return PersistencePromise.resolve(dbOwner);
       } else {
         return PersistencePromise.resolve(null);
@@ -100,7 +104,7 @@ function ownersStore(
 ): SimpleDbStore<DbOwnerKey, DbOwner> {
   return getStore<DbOwnerKey, DbOwner>(
       txn,
-      DbMutationQueue.store
+      DbOwner.store
   );
 }
 

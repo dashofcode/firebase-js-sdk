@@ -132,13 +132,13 @@ export class IndexedDbPersistence implements Persistence {
     assert(!this.started, 'IndexedDbPersistence double-started!');
     this.started = true;
 
+    console.log('IndexedDbPersistence start');
     return SimpleDb.openOrCreate(this.dbName, SCHEMA_VERSION, createOrUpgradeDb)
       .then(db => {
         this.simpleDb = db;
       })
-      .then(() => this.tryBecomeMaster())
       .then(() => {
-        this.scheduleOwnerLeaseRefreshes();
+     //   this.scheduleOwnerLeaseRefreshes();
         this.attachWindowUnloadHook();
       });
   }
@@ -147,7 +147,7 @@ export class IndexedDbPersistence implements Persistence {
     assert(this.started, 'IndexedDbPersistence shutdown without start!');
     this.started = false;
     this.detachWindowUnloadHook();
-    this.stopOwnerLeaseRefreshes();
+    //this.stopOwnerLeaseRefreshes();
     return this.releaseOwnerLease().then(() => {
       this.simpleDb.close();
     });
@@ -211,7 +211,7 @@ export class IndexedDbPersistence implements Persistence {
     return 'firestore/' + databaseInfo.persistenceKey + '/' + database + '/';
   }
 
-  /**
+   /**
    * Acquires the owner lease if there's no valid owner. Else returns a rejected
    * promise.
    */
@@ -270,18 +270,18 @@ export class IndexedDbPersistence implements Persistence {
    * against losing the owner lease.
    */
   private ensureOwnerLease(txn: SimpleDbTransaction): PersistencePromise<void> {
-    const store = txn.store<DbOwnerKey, DbOwner>(DbOwner.store);
-    return store.get('owner').next(dbOwner => {
-      if (dbOwner === null || dbOwner.ownerId !== this.ownerId) {
-        this.persistenceError = new FirestoreError(
-          Code.FAILED_PRECONDITION,
-          EXISTING_OWNER_ERROR_MSG
-        );
-        return PersistencePromise.reject<void>(this.persistenceError);
-      } else {
+    // const store = txn.store<DbOwnerKey, DbOwner>(DbOwner.store);
+    // return store.get('owner').next(dbOwner => {
+    //   if (dbOwner === null || dbOwner.ownerId !== this.ownerId) {
+    //     this.persistenceError = new FirestoreError(
+    //       Code.FAILED_PRECONDITION,
+    //       EXISTING_OWNER_ERROR_MSG
+    //     );
+    //     return PersistencePromise.reject<void>(this.persistenceError);
+    //   } else {
         return PersistencePromise.resolve();
-      }
-    });
+      // }
+    // });
   }
 
   /**
@@ -312,37 +312,37 @@ export class IndexedDbPersistence implements Persistence {
     }
   }
 
-  /**
-   * Schedules a recurring timer to update the owner lease timestamp to prevent
-   * other tabs from taking the lease.
-   */
-  private scheduleOwnerLeaseRefreshes(): void {
-    // NOTE: This doesn't need to be scheduled on the async queue and doing so
-    // would increase the chances of us not refreshing on time if the queue is
-    // backed up for some reason.
-    this.ownerLeaseRefreshHandle = setInterval(() => {
-      const txResult = this.runTransaction('Refresh owner timestamp', txn => {
-        // NOTE: We don't need to validate the current owner contents, since
-        // runTransaction does that automatically.
-        const store = txn.store<DbOwnerKey, DbOwner>(DbOwner.store);
-        return store.put('owner', new DbOwner(this.ownerId, Date.now()));
-      });
-
-      txResult.catch(reason => {
-        // Probably means we lost the lease. Report the error and stop trying to
-        // refresh the lease.
-        log.error(reason);
-        this.stopOwnerLeaseRefreshes();
-      });
-    }, OWNER_LEASE_REFRESH_INTERVAL_MS);
-  }
-
-  private stopOwnerLeaseRefreshes(): void {
-    if (this.ownerLeaseRefreshHandle) {
-      clearInterval(this.ownerLeaseRefreshHandle);
-      this.ownerLeaseRefreshHandle = null;
-    }
-  }
+  // /**
+  //  * Schedules a recurring timer to update the owner lease timestamp to prevent
+  //  * other tabs from taking the lease.
+  //  */
+  // private scheduleOwnerLeaseRefreshes(): void {
+  //   // NOTE: This doesn't need to be scheduled on the async queue and doing so
+  //   // would increase the chances of us not refreshing on time if the queue is
+  //   // backed up for some reason.
+  //   this.ownerLeaseRefreshHandle = setInterval(() => {
+  //     const txResult = this.runTransaction('Refresh owner timestamp', txn => {
+  //       // NOTE: We don't need to validate the current owner contents, since
+  //       // runTransaction does that automatically.
+  //       const store = txn.store<DbOwnerKey, DbOwner>(DbOwner.store);
+  //       return store.put('owner', new DbOwner(this.ownerId, Date.now()));
+  //     });
+  //
+  //     txResult.catch(reason => {
+  //       // Probably means we lost the lease. Report the error and stop trying to
+  //       // refresh the lease.
+  //       log.error(reason);
+  //       this.stopOwnerLeaseRefreshes();
+  //     });
+  //   }, OWNER_LEASE_REFRESH_INTERVAL_MS);
+  // }
+  //
+  // private stopOwnerLeaseRefreshes(): void {
+  //   if (this.ownerLeaseRefreshHandle) {
+  //     clearInterval(this.ownerLeaseRefreshHandle);
+  //     this.ownerLeaseRefreshHandle = null;
+  //   }
+  // }
 
   /**
    * Attaches a window.unload handler that will synchronously write our

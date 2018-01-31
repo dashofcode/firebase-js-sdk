@@ -22,51 +22,57 @@ import { assert } from '../util/assert';
 
 import { encode, EncodedResourcePath } from './encoded_resource_path';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 4;
 
 /** Performs database creation and (in the future) upgrades between versions. */
 export function createOrUpgradeDb(db: IDBDatabase, oldVersion: number): void {
-  assert(oldVersion === 0, 'Unexpected upgrade from version ' + oldVersion);
+  //assert(oldVersion === 0, 'Unexpected upgrade from version ' + oldVersion);
+  console.log('createOrUpgradeDb');
 
-  db.createObjectStore(DbMutationQueue.store, {
-    keyPath: DbMutationQueue.keyPath
-  });
+  if (oldVersion === 0) {
+      db.createObjectStore(DbMutationQueue.store, {
+      keyPath: DbMutationQueue.keyPath
+    });
 
-  // TODO(mikelehen): Get rid of "as any" if/when TypeScript fixes their
-  // types. https://github.com/Microsoft/TypeScript/issues/14322
-  db.createObjectStore(
-    DbMutationBatch.store,
-    // tslint:disable-next-line:no-any
-    { keyPath: DbMutationBatch.keyPath as any }
-  );
+    // TODO(mikelehen): Get rid of "as any" if/when TypeScript fixes their
+    // types. https://github.com/Microsoft/TypeScript/issues/14322
+    db.createObjectStore(
+        DbMutationBatch.store,
+        // tslint:disable-next-line:no-any
+        {keyPath: DbMutationBatch.keyPath as any}
+    );
 
-  const targetDocumentsStore = db.createObjectStore(
-    DbTargetDocument.store,
-    // tslint:disable-next-line:no-any
-    { keyPath: DbTargetDocument.keyPath as any }
-  );
-  targetDocumentsStore.createIndex(
-    DbTargetDocument.documentTargetsIndex,
-    DbTargetDocument.documentTargetsKeyPath,
-    { unique: true }
-  );
+    const targetDocumentsStore = db.createObjectStore(
+        DbTargetDocument.store,
+        // tslint:disable-next-line:no-any
+        {keyPath: DbTargetDocument.keyPath as any}
+    );
+    targetDocumentsStore.createIndex(
+        DbTargetDocument.documentTargetsIndex,
+        DbTargetDocument.documentTargetsKeyPath,
+        {unique: true}
+    );
 
-  const targetStore = db.createObjectStore(DbTarget.store, {
-    keyPath: DbTarget.keyPath
-  });
-  // NOTE: This is unique only because the TargetId is the suffix.
-  targetStore.createIndex(
-    DbTarget.queryTargetsIndexName,
-    DbTarget.queryTargetsKeyPath,
-    { unique: true }
-  );
+    const targetStore = db.createObjectStore(DbTarget.store, {
+      keyPath: DbTarget.keyPath
+    });
+    // NOTE: This is unique only because the TargetId is the suffix.
+    targetStore.createIndex(
+        DbTarget.queryTargetsIndexName,
+        DbTarget.queryTargetsKeyPath,
+        {unique: true}
+    );
 
-  // NOTE: keys for these stores are specified explicitly rather than using a
-  // keyPath.
-  db.createObjectStore(DbDocumentMutation.store);
-  db.createObjectStore(DbRemoteDocument.store);
-  db.createObjectStore(DbOwner.store);
-  db.createObjectStore(DbTargetGlobal.store);
+    // NOTE: keys for these stores are specified explicitly rather than using a
+    // keyPath.
+    db.createObjectStore(DbDocumentMutation.store);
+    db.createObjectStore(DbRemoteDocument.store);
+    db.createObjectStore(DbOwner.store);
+    db.createObjectStore(DbTargetGlobal.store);
+  }
+
+  console.log('updating database');
+  db.createObjectStore(DbInstance.store, {keyPath: DbInstance.keyPath as any})
 }
 
 /**

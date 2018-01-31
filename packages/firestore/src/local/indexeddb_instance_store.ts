@@ -42,7 +42,7 @@ export class IndexedDbInstanceStore implements InstanceStore {
 
 
   persistState(transaction: PersistenceTransaction) : PersistencePromise<void> {
-    return instancesStore(transaction).put(new DbInstance(this.userId, this.instanceId, Date.now(), this.visibility));
+    return instancesStore(transaction).put(new DbInstance(this.userId || "null", this.instanceId, Date.now(), this.visibility));
   }
 }
 

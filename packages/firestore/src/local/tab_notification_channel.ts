@@ -39,13 +39,11 @@ const VISIBILITY_PREFIX = 'visibility';
 const LOG_TAG = 'TabNotificationChannel';
 
 
-const INSTANCE_KEY_RE = /fs_instances_(\w*)_(\w*)/.compile();
+const INSTANCE_KEY_RE = /fs_instances_(\w*)_(\w*)/;
 
+const MUTATION_KEY_RE = /fs_mutations_(\w*)/;
 
-const MUTATION_KEY_RE = /fs_mutations_(\w*)_(\w*)/.compile();
-
-
-const TARGET_KEY_RE = /fs_targets_(\w*)_(\w*)/.compile();
+const TARGET_KEY_RE = /fs_targets_(\w*)/;
 
 /**
  * WebStorage of the Firestore client. Firestore uses WebStorage for cross-tab
@@ -68,14 +66,44 @@ export interface TabNotificationChannel {
 
 }
 
+export class NoOpNotificationChannel implements TabNotificationChannel {
+  start(): void {
+  }
+
+  shutdown(): void {
+  }
+
+  addMutation(batchId: BatchId): void {
+  }
+
+  rejectMutation(batchId: BatchId, error: FirestoreError): void {
+  }
+
+  acknowledgeMutation(batchId: BatchId): void {
+  }
+
+  addQuery(targetId: TargetId): void {
+  }
+
+  removeQuery(targetId: TargetId): void {
+  }
+
+  rejectQuery(targetId: TargetId, err: FirestoreError): void {
+  }
+
+  updateQuery(updatedTargetIds: TargetId[]): void {
+  }
+
+}
+
 type InstanceId = string;
 
 
 class InstanceRow {
   instanceId: InstanceId;
   updateTime: Date;
-  activeTargets: Set<TargetId>;
-  pendingBatches: Set<BatchId>;
+  activeTargets: Set<TargetId> = new Set();
+  pendingBatches: Set<BatchId> = new Set();
 }
 
 class MutationUpdateRow {
@@ -103,14 +131,12 @@ class WatchTargetRow {
  */
 export class LocalStorageNotificationChannel implements TabNotificationChannel {
   private localStorage: Storage;
-  private visibilityState: VisibilityState = VisibilityState.Unknown;
   private started = false;
 
   private knownInstances: { [key: string]: InstanceRow } = {};
 
 
-
-  private instanceState: InstanceRow;
+  private instanceState: InstanceRow = new InstanceRow();
 
   private primary = false;
 
@@ -118,7 +144,7 @@ export class LocalStorageNotificationChannel implements TabNotificationChannel {
     private persistenceKey: string,
     private instanceId: string,
     private asyncQueue: AsyncQueue,
-    private syncEngine: SyncEngine
+    public syncEngine: SyncEngine
   ) {
     this.instanceKey = this.buildKey(
       VISIBILITY_PREFIX,
@@ -235,6 +261,7 @@ export class LocalStorageNotificationChannel implements TabNotificationChannel {
   // Callback for the LocalStorage observer. 'key' is the key that changed, and
   // value is the new value.
   private onUpdate(key: string, value: string) {
+    console.log('LocalStorageNotificationChannel.onUpdate ' + key);
     let instanceRow = LocalStorageNotificationChannel.getInstanceRow(key, value);
     if (instanceRow) {
       instanceRow.pendingBatches.forEach(batchId => {
@@ -249,7 +276,7 @@ export class LocalStorageNotificationChannel implements TabNotificationChannel {
     if (!this.primary) {
       let mutationRow = LocalStorageNotificationChannel.getMutationBatchRow(key, value);
       if (mutationRow) {
-        this.syncEngine.updateBatch(mutationRow.batchId, mutationRow.status, mutationRow.err);
+        this.syncEngine.updateBatch(Number(mutationRow.batchId), mutationRow.status, mutationRow.err);
       } else {
         let targetRow = LocalStorageNotificationChannel.getTargetUpdateRow(key, value);
         if (targetRow) {
@@ -321,6 +348,7 @@ export class LocalStorageNotificationChannel implements TabNotificationChannel {
   // }
 
   private persistMutation(batchId: BatchId, status: MutationBatchStatus, error?: FirestoreError) {
+    console.log('LocalStorageNotificationChannel.persistMutation');
     this.localStorage[this.buildKey("mutations", String(batchId))] = this.buildValue({
       batchId: String(batchId),
       status: MutationBatchStatus[status]

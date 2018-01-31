@@ -218,6 +218,10 @@ export class RemoteStore {
 
     // Load any saved stream token from persistent storage
     return this.localStore.getLastStreamToken().then(token => {
+      if (this.writeStream === null) {
+        return Promise.resolve();
+      }
+
       this.writeStream.lastStreamToken = token;
 
       if (this.shouldStartWatchStream()) {

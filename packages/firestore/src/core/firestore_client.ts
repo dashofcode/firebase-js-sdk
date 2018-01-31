@@ -46,7 +46,7 @@ import { Transaction } from './transaction';
 import { OnlineState } from './types';
 import { ViewSnapshot } from './view_snapshot';
 import {
-  LocalStorageNotificationChannel,
+  LocalStorageNotificationChannel, NoOpNotificationChannel,
   TabNotificationChannel
 } from '../local/tab_notification_channel';
 import { AutoId } from '../util/misc';
@@ -149,7 +149,7 @@ export class FirestoreClient {
         initialized = true;
 
         this.initializePersistence(usePersistence, persistenceResult)
-          .then(() => {this.initializeRest(user))
+          .then(() => this.initializeRest(user))
           .then(initializationDone.resolve, initializationDone.reject);
       } else {
         this.asyncQueue.schedule(() => {
@@ -261,14 +261,13 @@ export class FirestoreClient {
 
 
     return this.persistence.start().then(() => {
-      this.masterElector = new MasterElector(this.asyncQueue, this.persistence, ownerId);
+      this.masterElector = new MasterElector(this.asyncQueue, this.persistence, ownerId, this.syncEngine);
       this.notificationChannel = new LocalStorageNotificationChannel(
         storagePrefix,
         ownerId,
         this.asyncQueue,
           this.syncEngine
       );
-      this.notificationChannel.start();
       this.windowEventListener = new WindowEventListener(
         this.asyncQueue,
         this.masterElector
@@ -285,6 +284,7 @@ export class FirestoreClient {
   private startMemoryPersistence(): Promise<void> {
     this.garbageCollector = new EagerGarbageCollector();
     this.persistence = new MemoryPersistence();
+    this.notificationChannel = new NoOpNotificationChannel();
     return this.persistence.start();
   }
 
@@ -333,6 +333,11 @@ export class FirestoreClient {
 
         // Setup wiring between sync engine and remote store
         this.remoteStore.syncEngine = this.syncEngine;
+        this.masterElector.syncEngine = this.syncEngine;
+        if (this.notificationChannel instanceof LocalStorageNotificationChannel) {
+          this.notificationChannel.syncEngine = this.syncEngine;
+          this.notificationChannel.start();
+        }
 
         this.eventMgr = new EventManager(this.syncEngine);
 

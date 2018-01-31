@@ -236,12 +236,36 @@ export class SyncEngine implements RemoteSyncer {
       .localWrite(batch)
       .then(result => {
         this.addMutationCallback(result.batchId, userCallback);
+        console.log('adding mutation');
         this.notificationChannel.addMutation(result.batchId);
         return this.emitNewSnapsAndNotifyLocalStore(result.changes);
       })
       .then(() => {
         return this.remoteStore.fillWritePipeline();
       });
+  }
+
+  emitSnaps(documentKeys: DocumentKey[]) {
+    const reads = [];
+    for (const key of documentKeys) {
+      reads.push(this.localStore.readDocument(key));
+    }
+
+    return Promise.all(reads).then((docs) => {
+      let map = maybeDocumentMap();
+
+      docs.forEach((doc : MaybeDocument | null) => {
+        if (doc) {
+          map = map.insert(doc.key, doc);
+        } else {
+          return;
+        }
+
+      });
+
+      return this.emitNewSnapsAndNotifyLocalStore(map);
+
+    });
   }
 
   // TODO(klimt): Wrap the given error in a standard Firestore error object.
@@ -646,7 +670,12 @@ export class SyncEngine implements RemoteSyncer {
       case MutationBatchStatus.PENDING:
         // assert(primary);
         return this.localStore.getMutationBatch(mutationBatchId).then(batch => {
-          return this.write(batch.mutations, null);
+          console.log('updateBatch ' + JSON.stringify(batch));
+          const keys : DocumentKey[] = [];
+          batch.mutations.forEach((mutation) => {
+            keys.push(mutation.key);
+          });
+          return this.emitSnaps(keys);
         });
       case MutationBatchStatus.ACKNOWLEDGED:
         // assert(!primary);

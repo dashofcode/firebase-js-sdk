@@ -44,10 +44,6 @@ import { SimpleDbStore, SimpleDbTransaction } from './simple_db';
 
 /** A mutation queue for a specific user, backed by IndexedDB. */
 export class IndexedDbMutationQueue implements MutationQueue {
-  /**
-   * A write-through cache copy of the metadata describing the current queue.
-   */
-  private metadata: DbMutationQueue;
 
   private garbageCollector: GarbageCollector | null = null;
 
@@ -90,27 +86,31 @@ export class IndexedDbMutationQueue implements MutationQueue {
             /*lastStreamToken=*/ ''
           );
         }
-        this.metadata = metadata;
-
         // On restart, nextBatchId may end up lower than
         // lastAcknowledgedBatchId since it's computed from the queue
         // contents, and there may be no mutations in the queue. In this
         // case, we need to reset lastAcknowledgedBatchId (which is safe
         // since the queue must be empty).
-        if (this.metadata.lastAcknowledgedBatchId >=batchId) {
+        if (metadata.lastAcknowledgedBatchId >=batchId) {
           return this.checkEmpty(transaction).next(empty => {
             assert(
               empty,
               'Reset nextBatchID is only possible when the queue is empty'
             );
 
-            this.metadata.lastAcknowledgedBatchId = BATCHID_UNKNOWN;
-            return mutationQueuesStore(transaction).put(this.metadata);
+            metadata.lastAcknowledgedBatchId = BATCHID_UNKNOWN;
+            return mutationQueuesStore(transaction).put(metadata);
           });
         } else {
           return PersistencePromise.resolve();
         }
       });
+  }
+
+  getMetadata(transaction: PersistenceTransaction): PersistencePromise<DbMutationQueue> {
+    return mutationQueuesStore(transaction).get(this.userId).next((metadata: DbMutationQueue | null) =>{
+      return PersistencePromise.resolve(metadata);
+    });
   }
 
   /**
@@ -164,7 +164,9 @@ export class IndexedDbMutationQueue implements MutationQueue {
   getHighestAcknowledgedBatchId(
     transaction: PersistenceTransaction
   ): PersistencePromise<BatchId> {
-    return PersistencePromise.resolve(this.metadata.lastAcknowledgedBatchId);
+    return this.getMetadata(transaction).next(metadata => {
+      return metadata ? metadata.lastAcknowledgedBatchId : -1
+    });
   }
 
   acknowledgeBatch(
@@ -172,30 +174,36 @@ export class IndexedDbMutationQueue implements MutationQueue {
     batch: MutationBatch,
     streamToken: ProtoByteString
   ): PersistencePromise<void> {
-    const batchId = batch.batchId;
-    assert(
-      batchId > this.metadata.lastAcknowledgedBatchId,
-      'Mutation batchIDs must be acknowledged in order'
-    );
+    return this.getMetadata(transaction).next(metadata => {
+      const batchId = batch.batchId;
+      assert(
+        batchId > metadata.lastAcknowledgedBatchId,
+        'Mutation batchIDs must be acknowledged in order'
+      );
 
-    this.metadata.lastAcknowledgedBatchId = batchId;
-    this.metadata.lastStreamToken = validateStreamToken(streamToken);
+      metadata.lastAcknowledgedBatchId = batchId;
+      metadata.lastStreamToken = validateStreamToken(streamToken);
 
-    return mutationQueuesStore(transaction).put(this.metadata);
+      return mutationQueuesStore(transaction).put(metadata);
+    });
   }
 
   getLastStreamToken(
     transaction: PersistenceTransaction
   ): PersistencePromise<ProtoByteString> {
-    return PersistencePromise.resolve(this.metadata.lastStreamToken);
+    return this.getMetadata(transaction).next(metadata => {
+      return metadata ? metadata.lastStreamToken : null
+    });
   }
 
   setLastStreamToken(
     transaction: PersistenceTransaction,
     streamToken: ProtoByteString
   ): PersistencePromise<void> {
-    this.metadata.lastStreamToken = validateStreamToken(streamToken);
-    return mutationQueuesStore(transaction).put(this.metadata);
+    return this.getMetadata(transaction).next(metadata => {
+      metadata.lastStreamToken = validateStreamToken(streamToken);
+      return mutationQueuesStore(transaction).put(metadata);
+    });
   }
 
   addMutationBatch(
@@ -210,6 +218,7 @@ export class IndexedDbMutationQueue implements MutationQueue {
           batchId = nextBatchId;
           batch = new MutationBatch(batchId, localWriteTime, mutations);
           const dbBatch = this.serializer.toDbMutationBatch(this.userId, batch);
+          console.log(Date.now() + "adding batch with key " + JSON.stringify(dbBatch));
           return mutationsStore(transaction).put(dbBatch)
         })
         .next(() => {
@@ -229,7 +238,7 @@ export class IndexedDbMutationQueue implements MutationQueue {
           return PersistencePromise.waitFor(promises);
         })
           .next(() => {
-          return batch;
+          return this.lookupMutationBatch(transaction, batchId).next(() => batch);
         });
   }
 
@@ -237,11 +246,12 @@ export class IndexedDbMutationQueue implements MutationQueue {
     transaction: PersistenceTransaction,
     batchId: BatchId
   ): PersistencePromise<MutationBatch | null> {
+    const key = this.keyForBatchId(batchId);
     return mutationsStore(transaction)
-      .get(this.keyForBatchId(batchId))
+      .get(key)
       .next(
-        dbBatch =>
-          dbBatch ? this.serializer.fromDbMutationBatch(dbBatch) : null
+        dbBatch => {
+          return dbBatch ? this.serializer.fromDbMutationBatch(dbBatch) : null; }
       );
   }
 

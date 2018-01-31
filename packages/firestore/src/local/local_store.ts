@@ -298,6 +298,11 @@ export class LocalStore {
         .next((changedDocuments: MaybeDocumentMap) => {
           return { batchId: batch.batchId, changes: changedDocuments };
         });
+    }).then((res) => {
+      return this.persistence.runTransaction('Locally read mutations', txn => {
+        console.log('reading back');
+        return this.mutationQueue.lookupMutationBatch(txn, res.batchId);
+      }).then(() => res);
     });
   }
 
