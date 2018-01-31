@@ -20,7 +20,7 @@ import { LocalStore } from '../local/local_store';
 import { LocalViewChanges } from '../local/local_view_changes';
 import { QueryData, QueryPurpose } from '../local/query_data';
 import { ReferenceSet } from '../local/reference_set';
-import {maybeDocumentMap, MaybeDocumentMap} from '../model/collections';
+import { maybeDocumentMap, MaybeDocumentMap } from '../model/collections';
 import { MaybeDocument, NoDocument } from '../model/document';
 import { DocumentKey } from '../model/document_key';
 import { Mutation } from '../model/mutation';
@@ -43,8 +43,12 @@ import { SnapshotVersion } from './snapshot_version';
 import { TargetIdGenerator } from './target_id_generator';
 import { Transaction } from './transaction';
 import {
-  BatchId, MutationBatchStatus, OnlineState, ProtoByteString,
-  TargetId, WatchTargetStatus
+  BatchId,
+  MutationBatchStatus,
+  OnlineState,
+  ProtoByteString,
+  TargetId,
+  WatchTargetStatus
 } from './types';
 import {
   AddedLimboDocument,
@@ -55,7 +59,7 @@ import {
 } from './view';
 import { ViewSnapshot } from './view_snapshot';
 import { TabNotificationChannel } from '../local/tab_notification_channel';
-import {InstanceStore} from '../local/instance_store';
+import { InstanceStore } from '../local/instance_store';
 
 const LOG_TAG = 'SyncEngine';
 
@@ -132,8 +136,7 @@ export class SyncEngine implements RemoteSyncer {
     private remoteStore: RemoteStore,
     private notificationChannel: TabNotificationChannel,
     private currentUser: User
-  ) {
-  }
+  ) {}
 
   /** Subscribes view and error handler. Can be called only once. */
   subscribe(viewHandler: ViewHandler, errorHandler: ErrorHandler): void {
@@ -170,38 +173,38 @@ export class SyncEngine implements RemoteSyncer {
 
   private executeQuery(queryData: QueryData): Promise<TargetId> {
     return this.localStore
-        .executeQuery(queryData.query)
-        .then(docs => {
-          return this.localStore
-              .remoteDocumentKeys(queryData.targetId)
-              .then(remoteKeys => {
-                const view = new View(queryData.query, remoteKeys);
-                const viewDocChanges = view.computeDocChanges(docs);
-                const viewChange = view.applyChanges(viewDocChanges);
-                assert(
-                    viewChange.limboChanges.length === 0,
-                    'View returned limbo docs before target ack from the server.'
-                );
-                assert(
-                    !!viewChange.snapshot,
-                    'applyChanges for new view should always return a snapshot'
-                );
+      .executeQuery(queryData.query)
+      .then(docs => {
+        return this.localStore
+          .remoteDocumentKeys(queryData.targetId)
+          .then(remoteKeys => {
+            const view = new View(queryData.query, remoteKeys);
+            const viewDocChanges = view.computeDocChanges(docs);
+            const viewChange = view.applyChanges(viewDocChanges);
+            assert(
+              viewChange.limboChanges.length === 0,
+              'View returned limbo docs before target ack from the server.'
+            );
+            assert(
+              !!viewChange.snapshot,
+              'applyChanges for new view should always return a snapshot'
+            );
 
-                const data = new QueryView(
-                    queryData.query,
-                    queryData.targetId,
-                    queryData.resumeToken,
-                    view
-                );
-                this.queryViewsByQuery.set(queryData.query, data);
-                this.queryViewsByTarget[queryData.targetId] = data;
-                this.viewHandler!([viewChange.snapshot!]);
-                this.remoteStore.listen(queryData);
-              });
-        })
-        .then(() => {
-          return queryData.targetId;
-        });
+            const data = new QueryView(
+              queryData.query,
+              queryData.targetId,
+              queryData.resumeToken,
+              view
+            );
+            this.queryViewsByQuery.set(queryData.query, data);
+            this.queryViewsByTarget[queryData.targetId] = data;
+            this.viewHandler!([viewChange.snapshot!]);
+            this.remoteStore.listen(queryData);
+          });
+      })
+      .then(() => {
+        return queryData.targetId;
+      });
   }
 
   /** Stops listening to the query. */
@@ -251,20 +254,18 @@ export class SyncEngine implements RemoteSyncer {
       reads.push(this.localStore.readDocument(key));
     }
 
-    return Promise.all(reads).then((docs) => {
+    return Promise.all(reads).then(docs => {
       let map = maybeDocumentMap();
 
-      docs.forEach((doc : MaybeDocument | null) => {
+      docs.forEach((doc: MaybeDocument | null) => {
         if (doc) {
           map = map.insert(doc.key, doc);
         } else {
           return;
         }
-
       });
 
       return this.emitNewSnapsAndNotifyLocalStore(map);
-
     });
   }
 
@@ -403,7 +404,7 @@ export class SyncEngine implements RemoteSyncer {
       }
     });
     this.viewHandler(newViewSnapshots);
-   // this.notificationChannel.setOnlineState(onlineState);
+    // this.notificationChannel.setOnlineState(onlineState);
   }
 
   rejectListen(targetId: TargetId, err: FirestoreError): Promise<void> {
@@ -665,14 +666,18 @@ export class SyncEngine implements RemoteSyncer {
       });
   }
 
-  updateBatch(mutationBatchId: BatchId, type: MutationBatchStatus, err?: FirestoreError) {
+  updateBatch(
+    mutationBatchId: BatchId,
+    type: MutationBatchStatus,
+    err?: FirestoreError
+  ) {
     switch (type) {
       case MutationBatchStatus.PENDING:
         // assert(primary);
         return this.localStore.getMutationBatch(mutationBatchId).then(batch => {
           console.log('updateBatch ' + JSON.stringify(batch));
-          const keys : DocumentKey[] = [];
-          batch.mutations.forEach((mutation) => {
+          const keys: DocumentKey[] = [];
+          batch.mutations.forEach(mutation => {
             keys.push(mutation.key);
           });
           return this.emitSnaps(keys);
@@ -690,7 +695,9 @@ export class SyncEngine implements RemoteSyncer {
               });
             });
           }
-          promiseChain.then(() => this.emitNewSnapsAndNotifyLocalStore(affectedDocs));
+          promiseChain.then(() =>
+            this.emitNewSnapsAndNotifyLocalStore(affectedDocs)
+          );
         });
       case MutationBatchStatus.REJECTED:
         // assert(!primary);
@@ -701,26 +708,26 @@ export class SyncEngine implements RemoteSyncer {
   updateWatch(targetId: number, type: WatchTargetStatus, err?: FirestoreError) {
     switch (type) {
       case WatchTargetStatus.PENDING:
-       // assert(primary);
-          if (!this.queryViewsByTarget[targetId]) {
-            this.listenToExistingQuery(targetId);
-          }
-          break;
+        // assert(primary);
+        if (!this.queryViewsByTarget[targetId]) {
+          this.listenToExistingQuery(targetId);
+        }
+        break;
       case WatchTargetStatus.UPDATED:
-       // assert(!primary);
-       //
-       //  return this.localStore.getQuery(targetId).then(query => {
-       //    // The logic in "listen" will work for us since it raises the snapshots
-       //    // from cache (albeit with the wrong metadata). We should factor it out
-       //    // and add a flag to control the metadata.
-       //    return this.localStore.executeQuery(query.query).then((docMap) => {
-       //      let changes = this.queryViewsByTarget[targetId].view.computeDocChanges(docMap);
-       //      let viewChange = this.queryViewsByTarget[targetId].view.applyChanges(changes);
-       //      ViewChange
-       //      this.emitNewSnapsAndNotifyLocalStore
-       //    });
-       //
-       //  });
+      // assert(!primary);
+      //
+      //  return this.localStore.getQuery(targetId).then(query => {
+      //    // The logic in "listen" will work for us since it raises the snapshots
+      //    // from cache (albeit with the wrong metadata). We should factor it out
+      //    // and add a flag to control the metadata.
+      //    return this.localStore.executeQuery(query.query).then((docMap) => {
+      //      let changes = this.queryViewsByTarget[targetId].view.computeDocChanges(docMap);
+      //      let viewChange = this.queryViewsByTarget[targetId].view.applyChanges(changes);
+      //      ViewChange
+      //      this.emitNewSnapsAndNotifyLocalStore
+      //    });
+      //
+      //  });
       case WatchTargetStatus.REJECTED:
         //assert(!primary);
         return this.rejectListen(targetId, err);
@@ -735,13 +742,14 @@ export class SyncEngine implements RemoteSyncer {
     }
   }
 
-  private listenToExistingQuery(targetId: number) : Promise<void> {
-    return this.localStore.getQuery(targetId).then(queryData => {
-      return this.executeQuery(queryData);
-    }).then(() => {});
+  private listenToExistingQuery(targetId: number): Promise<void> {
+    return this.localStore
+      .getQuery(targetId)
+      .then(queryData => {
+        return this.executeQuery(queryData);
+      })
+      .then(() => {});
   }
 
-  setVisibility(visibility: VisibilityState) {
-
-  }
+  setVisibility(visibility: VisibilityState) {}
 }

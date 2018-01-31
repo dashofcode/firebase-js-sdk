@@ -16,17 +16,21 @@
 
 import { Code, FirestoreError } from '../util/error';
 import {
-  BatchId, MutationBatchStatus, OnlineState, TargetId,
-  VisibilityState, WatchTargetStatus
+  BatchId,
+  MutationBatchStatus,
+  OnlineState,
+  TargetId,
+  VisibilityState,
+  WatchTargetStatus
 } from '../core/types';
-import {assert, fail} from '../util/assert';
+import { assert, fail } from '../util/assert';
 import { AsyncQueue } from '../util/async_queue';
 import { debug } from '../util/log';
 import { StringMap } from '../util/types';
 import { SyncEngine } from '../core/sync_engine';
-import {SimpleDbStore, SimpleDbTransaction} from './simple_db';
-import {DbInstance, DbInstanceKey} from './indexeddb_schema';
-import {PersistenceTransaction} from './persistence';
+import { SimpleDbStore, SimpleDbTransaction } from './simple_db';
+import { DbInstance, DbInstanceKey } from './indexeddb_schema';
+import { PersistenceTransaction } from './persistence';
 
 /**
  * Refresh the contents of LocalStorage every four seconds.
@@ -37,7 +41,6 @@ const LCOAL_STORAGE_REFRESH_INTERVAL_MS: number = 4000;
 const VISIBILITY_PREFIX = 'visibility';
 
 const LOG_TAG = 'TabNotificationChannel';
-
 
 const INSTANCE_KEY_RE = /fs_instances_(\w*)_(\w*)/;
 
@@ -63,41 +66,29 @@ export interface TabNotificationChannel {
   removeQuery(targetId: TargetId): void;
   rejectQuery(targetId: TargetId, err: FirestoreError): void;
   updateQuery(updatedTargetIds: TargetId[]): void;
-
 }
 
 export class NoOpNotificationChannel implements TabNotificationChannel {
-  start(): void {
-  }
+  start(): void {}
 
-  shutdown(): void {
-  }
+  shutdown(): void {}
 
-  addMutation(batchId: BatchId): void {
-  }
+  addMutation(batchId: BatchId): void {}
 
-  rejectMutation(batchId: BatchId, error: FirestoreError): void {
-  }
+  rejectMutation(batchId: BatchId, error: FirestoreError): void {}
 
-  acknowledgeMutation(batchId: BatchId): void {
-  }
+  acknowledgeMutation(batchId: BatchId): void {}
 
-  addQuery(targetId: TargetId): void {
-  }
+  addQuery(targetId: TargetId): void {}
 
-  removeQuery(targetId: TargetId): void {
-  }
+  removeQuery(targetId: TargetId): void {}
 
-  rejectQuery(targetId: TargetId, err: FirestoreError): void {
-  }
+  rejectQuery(targetId: TargetId, err: FirestoreError): void {}
 
-  updateQuery(updatedTargetIds: TargetId[]): void {
-  }
-
+  updateQuery(updatedTargetIds: TargetId[]): void {}
 }
 
 type InstanceId = string;
-
 
 class InstanceRow {
   instanceId: InstanceId;
@@ -120,7 +111,6 @@ class WatchTargetRow {
   err?: FirestoreError;
 }
 
-
 /**
  * `LocalStorageNotificationChannel` uses LocalStorage as the backing store for
  * the TabNotificationChannel class.
@@ -134,7 +124,6 @@ export class LocalStorageNotificationChannel implements TabNotificationChannel {
   private started = false;
 
   private knownInstances: { [key: string]: InstanceRow } = {};
-
 
   private instanceState: InstanceRow = new InstanceRow();
 
@@ -170,11 +159,11 @@ export class LocalStorageNotificationChannel implements TabNotificationChannel {
 
     this.localStorage = window.localStorage;
     this.started = true;
-  //  this.initInstances();
-  //   this.persistInstanceState();
-  //   this.scheduleRefresh();
+    //  this.initInstances();
+    //   this.persistInstanceState();
+    //   this.scheduleRefresh();
 
-    window.addEventListener('storage', (e) =>  this.onUpdate(e.key, e.newValue));
+    window.addEventListener('storage', e => this.onUpdate(e.key, e.newValue));
   }
 
   shutdown(): void {
@@ -208,11 +197,11 @@ export class LocalStorageNotificationChannel implements TabNotificationChannel {
   }
 
   removeQuery(targetId: TargetId): void {
-   // this.currentState.activeTargets.delete(targetId);
+    // this.currentState.activeTargets.delete(targetId);
   }
 
   rejectQuery(targetId: TargetId, error: FirestoreError): void {
-   // this.rejectedTargetIds[targetId] = { date: new Date(), error };
+    // this.rejectedTargetIds[targetId] = { date: new Date(), error };
   }
 
   updateQuery(updatedTargetIds: TargetId[]): void {
@@ -221,7 +210,10 @@ export class LocalStorageNotificationChannel implements TabNotificationChannel {
     // }
   }
 
-  private static getInstanceRow(key: string, jsonValue: string) : InstanceRow | null {
+  private static getInstanceRow(
+    key: string,
+    jsonValue: string
+  ): InstanceRow | null {
     const keyComponents = key.match(INSTANCE_KEY_RE);
 
     if (keyComponents == null) {
@@ -234,7 +226,10 @@ export class LocalStorageNotificationChannel implements TabNotificationChannel {
     return value as InstanceRow;
   }
 
-  private static getMutationBatchRow(key: string, jsonValue: string) : MutationUpdateRow | null {
+  private static getMutationBatchRow(
+    key: string,
+    jsonValue: string
+  ): MutationUpdateRow | null {
     const keyComponents = key.match(MUTATION_KEY_RE);
 
     if (keyComponents == null) {
@@ -247,7 +242,10 @@ export class LocalStorageNotificationChannel implements TabNotificationChannel {
     return value as MutationUpdateRow;
   }
 
-  private static getTargetUpdateRow(key: string, jsonValue: string) : WatchTargetRow | null {
+  private static getTargetUpdateRow(
+    key: string,
+    jsonValue: string
+  ): WatchTargetRow | null {
     const keyComponents = key.match(TARGET_KEY_RE);
 
     if (keyComponents == null) {
@@ -262,7 +260,10 @@ export class LocalStorageNotificationChannel implements TabNotificationChannel {
   // value is the new value.
   private onUpdate(key: string, value: string) {
     console.log('LocalStorageNotificationChannel.onUpdate ' + key);
-    let instanceRow = LocalStorageNotificationChannel.getInstanceRow(key, value);
+    let instanceRow = LocalStorageNotificationChannel.getInstanceRow(
+      key,
+      value
+    );
     if (instanceRow) {
       instanceRow.pendingBatches.forEach(batchId => {
         this.syncEngine.updateBatch(batchId, MutationBatchStatus.PENDING);
@@ -274,13 +275,27 @@ export class LocalStorageNotificationChannel implements TabNotificationChannel {
     }
 
     if (!this.primary) {
-      let mutationRow = LocalStorageNotificationChannel.getMutationBatchRow(key, value);
+      let mutationRow = LocalStorageNotificationChannel.getMutationBatchRow(
+        key,
+        value
+      );
       if (mutationRow) {
-        this.syncEngine.updateBatch(Number(mutationRow.batchId), mutationRow.status, mutationRow.err);
+        this.syncEngine.updateBatch(
+          Number(mutationRow.batchId),
+          mutationRow.status,
+          mutationRow.err
+        );
       } else {
-        let targetRow = LocalStorageNotificationChannel.getTargetUpdateRow(key, value);
+        let targetRow = LocalStorageNotificationChannel.getTargetUpdateRow(
+          key,
+          value
+        );
         if (targetRow) {
-          this.syncEngine.updateWatch(targetRow.targetId, targetRow.status, targetRow.err);
+          this.syncEngine.updateWatch(
+            targetRow.targetId,
+            targetRow.status,
+            targetRow.err
+          );
         }
       }
     }
@@ -302,7 +317,9 @@ export class LocalStorageNotificationChannel implements TabNotificationChannel {
     assert(this.started, 'LocalStorageNotificationChannel not started');
     debug(LOG_TAG, 'Persisting state in LocalStorage');
     this.localStorage[this.instanceKey] = this.buildValue({
-      pendingBatches: JSON.stringify(Array.from(this.instanceState.pendingBatches))
+      pendingBatches: JSON.stringify(
+        Array.from(this.instanceState.pendingBatches)
+      )
     });
     // this.tryBecomeMaster();
   }
@@ -313,7 +330,7 @@ export class LocalStorageNotificationChannel implements TabNotificationChannel {
       assert(value.indexOf('_') === -1, "Key element cannot contain '_'");
     });
 
-    return "fs_" + elements.join('_');
+    return 'fs_' + elements.join('_');
   }
 
   /** JSON-encodes the provided value and its current update time. */
@@ -347,12 +364,17 @@ export class LocalStorageNotificationChannel implements TabNotificationChannel {
   //   this.primary = this.masterRow.instanceId === this.instanceId;
   // }
 
-  private persistMutation(batchId: BatchId, status: MutationBatchStatus, error?: FirestoreError) {
+  private persistMutation(
+    batchId: BatchId,
+    status: MutationBatchStatus,
+    error?: FirestoreError
+  ) {
     console.log('LocalStorageNotificationChannel.persistMutation');
-    this.localStorage[this.buildKey("mutations", String(batchId))] = this.buildValue({
+    this.localStorage[
+      this.buildKey('mutations', String(batchId))
+    ] = this.buildValue({
       batchId: String(batchId),
       status: MutationBatchStatus[status]
     });
   }
-
 }

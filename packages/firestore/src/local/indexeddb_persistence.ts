@@ -34,8 +34,8 @@ import { PersistencePromise } from './persistence_promise';
 import { QueryCache } from './query_cache';
 import { RemoteDocumentCache } from './remote_document_cache';
 import { SimpleDb, SimpleDbTransaction } from './simple_db';
-import {InstanceStore} from './instance_store';
-import {IndexedDbInstanceStore} from './indexeddb_instance_store';
+import { InstanceStore } from './instance_store';
+import { IndexedDbInstanceStore } from './indexeddb_instance_store';
 
 const LOG_TAG = 'IndexedDbPersistence';
 
@@ -138,7 +138,7 @@ export class IndexedDbPersistence implements Persistence {
         this.simpleDb = db;
       })
       .then(() => {
-     //   this.scheduleOwnerLeaseRefreshes();
+        //   this.scheduleOwnerLeaseRefreshes();
         this.attachWindowUnloadHook();
       });
   }
@@ -211,7 +211,7 @@ export class IndexedDbPersistence implements Persistence {
     return 'firestore/' + databaseInfo.persistenceKey + '/' + database + '/';
   }
 
-   /**
+  /**
    * Acquires the owner lease if there's no valid owner. Else returns a rejected
    * promise.
    */
@@ -279,8 +279,8 @@ export class IndexedDbPersistence implements Persistence {
     //     );
     //     return PersistencePromise.reject<void>(this.persistenceError);
     //   } else {
-        return PersistencePromise.resolve();
-      // }
+    return PersistencePromise.resolve();
+    // }
     // });
   }
 

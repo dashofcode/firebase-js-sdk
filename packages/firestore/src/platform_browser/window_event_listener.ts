@@ -18,9 +18,9 @@ import { VisibilityState } from '../core/types';
 import { AsyncQueue } from '../util/async_queue';
 import { TabNotificationChannel } from '../local/tab_notification_channel';
 import { Code, FirestoreError } from '../util/error';
-import {InstanceStore} from '../local/instance_store';
-import {SyncEngine} from '../core/sync_engine';
-import {MasterElector} from '../local/master_elect';
+import { InstanceStore } from '../local/instance_store';
+import { SyncEngine } from '../core/sync_engine';
+import { MasterElector } from '../local/master_elect';
 
 /** Listener for window events raised by the browser. */
 export class WindowEventListener {

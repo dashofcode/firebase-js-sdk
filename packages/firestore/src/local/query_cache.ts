@@ -134,5 +134,7 @@ export interface QueryCache extends GarbageSource {
   ): PersistencePromise<DocumentKeySet>;
 
   getQuery(
-      transaction: PersistenceTransaction, targetId: number):  PersistencePromise<QueryData>;
+    transaction: PersistenceTransaction,
+    targetId: number
+  ): PersistencePromise<QueryData>;
 }

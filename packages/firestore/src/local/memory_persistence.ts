@@ -26,7 +26,7 @@ import { Persistence, PersistenceTransaction } from './persistence';
 import { PersistencePromise } from './persistence_promise';
 import { QueryCache } from './query_cache';
 import { RemoteDocumentCache } from './remote_document_cache';
-import {InstanceStore} from './instance_store';
+import { InstanceStore } from './instance_store';
 
 const LOG_TAG = 'MemoryPersistence';
 
@@ -36,7 +36,7 @@ const LOG_TAG = 'MemoryPersistence';
  */
 export class MemoryPersistence implements Persistence {
   getInstanceStore(user: User): InstanceStore {
-    throw new Error("NOT IMPLEMENTED");
+    throw new Error('NOT IMPLEMENTED');
   }
   /**
    * Note that these are retained here to make it easier to write tests

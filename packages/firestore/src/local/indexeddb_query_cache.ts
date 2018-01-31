@@ -120,21 +120,22 @@ export class IndexedDbQueryCache implements QueryCache {
   }
 
   getQuery(
-      transaction: PersistenceTransaction,
-      targetId: TargetId): PersistencePromise<QueryData> {
+    transaction: PersistenceTransaction,
+    targetId: TargetId
+  ): PersistencePromise<QueryData> {
     let result: QueryData | null = null;
     return targetsStore(transaction)
-        .iterate(
-            {index: DbTarget.queryTargetsIndexName },
-            (key, value, control) => {
-              const found = this.serializer.fromDbTarget(value);
-              if (found && found.targetId == targetId) {
-                result = found;
-                control.done();
-              }
-            }
-        )
-        .next(() => result);
+      .iterate(
+        { index: DbTarget.queryTargetsIndexName },
+        (key, value, control) => {
+          const found = this.serializer.fromDbTarget(value);
+          if (found && found.targetId == targetId) {
+            result = found;
+            control.done();
+          }
+        }
+      )
+      .next(() => result);
   }
 
   removeQueryData(

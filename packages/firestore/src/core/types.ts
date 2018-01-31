@@ -86,8 +86,6 @@ export enum VisibilityState {
   Background
 }
 
-
-
 export enum MutationBatchStatus {
   PENDING,
   ACKNOWLEDGED,

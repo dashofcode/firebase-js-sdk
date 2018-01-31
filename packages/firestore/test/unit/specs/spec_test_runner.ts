@@ -282,26 +282,19 @@ class MockConnection implements Connection {
 }
 
 export class MockNotificationChannel implements TabNotificationChannel {
-  addMutation(batchId: BatchId): void {
-  }
+  addMutation(batchId: BatchId): void {}
 
-  rejectMutation(batchId: BatchId, error: FirestoreError): void {
-  }
+  rejectMutation(batchId: BatchId, error: FirestoreError): void {}
 
-  acknowledgeMutation(batchId: BatchId): void {
-  }
+  acknowledgeMutation(batchId: BatchId): void {}
 
-  addQuery(targetId: TargetId): void {
-  }
+  addQuery(targetId: TargetId): void {}
 
-  removeQuery(targetId: TargetId): void {
-  }
+  removeQuery(targetId: TargetId): void {}
 
-  rejectQuery(targetId: TargetId, err: FirestoreError): void {
-  }
+  rejectQuery(targetId: TargetId, err: FirestoreError): void {}
 
-  updateQuery(updatedTargetIds: TargetId[]): void {
-  }
+  updateQuery(updatedTargetIds: TargetId[]): void {}
   private startCalled = false;
   private shutdownCalled = false;
 

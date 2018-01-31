@@ -282,28 +282,32 @@ export class LocalStore {
 
   /* Accept locally generated Mutations and commit them to storage. */
   localWrite(mutations: Mutation[]): Promise<LocalWriteResult> {
-    return this.persistence.runTransaction('Locally write mutations', txn => {
-      let batch: MutationBatch;
-      const localWriteTime = Timestamp.now();
-      return this.mutationQueue
-        .addMutationBatch(txn, localWriteTime, mutations)
-        .next(promisedBatch => {
-          batch = promisedBatch;
-          // TODO(koss): This is doing an N^2 update by replaying ALL the
-          // mutations on each document (instead of just the ones added) in
-          // this batch.
-          const keys = batch.keys();
-          return this.localDocuments.getDocuments(txn, keys);
-        })
-        .next((changedDocuments: MaybeDocumentMap) => {
-          return { batchId: batch.batchId, changes: changedDocuments };
-        });
-    }).then((res) => {
-      return this.persistence.runTransaction('Locally read mutations', txn => {
-        console.log('reading back');
-        return this.mutationQueue.lookupMutationBatch(txn, res.batchId);
-      }).then(() => res);
-    });
+    return this.persistence
+      .runTransaction('Locally write mutations', txn => {
+        let batch: MutationBatch;
+        const localWriteTime = Timestamp.now();
+        return this.mutationQueue
+          .addMutationBatch(txn, localWriteTime, mutations)
+          .next(promisedBatch => {
+            batch = promisedBatch;
+            // TODO(koss): This is doing an N^2 update by replaying ALL the
+            // mutations on each document (instead of just the ones added) in
+            // this batch.
+            const keys = batch.keys();
+            return this.localDocuments.getDocuments(txn, keys);
+          })
+          .next((changedDocuments: MaybeDocumentMap) => {
+            return { batchId: batch.batchId, changes: changedDocuments };
+          });
+      })
+      .then(res => {
+        return this.persistence
+          .runTransaction('Locally read mutations', txn => {
+            console.log('reading back');
+            return this.mutationQueue.lookupMutationBatch(txn, res.batchId);
+          })
+          .then(() => res);
+      });
   }
 
   /**
@@ -851,7 +855,7 @@ export class LocalStore {
     });
   }
 
-  getQuery(targetId: number) : Promise<QueryData> {
+  getQuery(targetId: number): Promise<QueryData> {
     return this.persistence.runTransaction('Retrieve query', txn => {
       return this.queryCache.getQuery(txn, targetId);
     });

@@ -46,12 +46,13 @@ import { Transaction } from './transaction';
 import { OnlineState } from './types';
 import { ViewSnapshot } from './view_snapshot';
 import {
-  LocalStorageNotificationChannel, NoOpNotificationChannel,
+  LocalStorageNotificationChannel,
+  NoOpNotificationChannel,
   TabNotificationChannel
 } from '../local/tab_notification_channel';
 import { AutoId } from '../util/misc';
 import { WindowEventListener } from '../platform_browser/window_event_listener';
-import {MasterElector} from '../local/master_elect';
+import { MasterElector } from '../local/master_elect';
 
 const LOG_TAG = 'FirestoreClient';
 
@@ -259,14 +260,18 @@ export class FirestoreClient {
       serializer
     );
 
-
     return this.persistence.start().then(() => {
-      this.masterElector = new MasterElector(this.asyncQueue, this.persistence, ownerId, this.syncEngine);
+      this.masterElector = new MasterElector(
+        this.asyncQueue,
+        this.persistence,
+        ownerId,
+        this.syncEngine
+      );
       this.notificationChannel = new LocalStorageNotificationChannel(
         storagePrefix,
         ownerId,
         this.asyncQueue,
-          this.syncEngine
+        this.syncEngine
       );
       this.windowEventListener = new WindowEventListener(
         this.asyncQueue,
@@ -334,7 +339,9 @@ export class FirestoreClient {
         // Setup wiring between sync engine and remote store
         this.remoteStore.syncEngine = this.syncEngine;
         this.masterElector.syncEngine = this.syncEngine;
-        if (this.notificationChannel instanceof LocalStorageNotificationChannel) {
+        if (
+          this.notificationChannel instanceof LocalStorageNotificationChannel
+        ) {
           this.notificationChannel.syncEngine = this.syncEngine;
           this.notificationChannel.start();
         }
@@ -359,7 +366,9 @@ export class FirestoreClient {
     this.asyncQueue.verifyOperationInProgress();
 
     debug(LOG_TAG, 'User Changed: ' + user.uid);
-    return this.syncEngine.handleUserChange(user).then(() => this.masterElector.handleUserChange(user));
+    return this.syncEngine
+      .handleUserChange(user)
+      .then(() => this.masterElector.handleUserChange(user));
   }
 
   /** Disables the network connection. Pending operations will not complete. */

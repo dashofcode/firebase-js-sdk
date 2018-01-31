@@ -25,7 +25,7 @@ import {
 } from '../../../src/local/tab_notification_channel';
 import { AutoId } from '../../../src/util/misc';
 import { AsyncQueue } from '../../../src/util/async_queue';
-import {SyncEngine} from '../../../src/core/sync_engine';
+import { SyncEngine } from '../../../src/core/sync_engine';
 
 /** The persistence prefix used for testing in IndexedBD and LocalStorage. */
 export const TEST_PERSISTENCE_PREFIX = 'PersistenceTestHelpers';
@@ -66,14 +66,14 @@ export async function testMemoryPersistence(): Promise<MemoryPersistence> {
 export async function testLocalStorageNotificationChannel(
   ownerId: string,
   queue: AsyncQueue,
-  syncEngine: SyncEngine,
+  syncEngine: SyncEngine
 ): Promise<TabNotificationChannel> {
   window.localStorage.clear();
   const persistence = new LocalStorageNotificationChannel(
     TEST_PERSISTENCE_PREFIX,
     ownerId,
     queue,
-      syncEngine
+    syncEngine
   );
   await persistence.start();
   return persistence;
