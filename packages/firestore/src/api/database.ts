@@ -91,6 +91,7 @@ import {
   fieldPathFromArgument,
   UserDataConverter
 } from './user_data_converter';
+import { Timestamp } from '../core/timestamp';
 
 // The objects that are a part of this API are exposed to third-parties as
 // compiled javascript so we want to flag our private members with a leading
@@ -1065,6 +1066,10 @@ export class DocumentSnapshot implements firestore.DocumentSnapshot {
       this._document !== null && this._document.hasLocalMutations,
       this._fromCache
     );
+  }
+
+  get updateTime(): Timestamp {
+    return this._document!.version.toTimestamp()
   }
 
   isEqual(other: firestore.DocumentSnapshot): boolean {
